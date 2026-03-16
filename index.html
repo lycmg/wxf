@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CarpAgent - AI</title>
+
+  <!-- UI 框架 + 动画库 + 粒子库 -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+
+  <style>
+    /* 页面基础布局：居中 + 阴影 */
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f7fa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* 容器：卡片式设计 + 入场动画标记 */
+    .container {
+      max-width: 750px;
+      padding: 36px;
+      box-shadow: 0 10px 35px rgba(0,0,0,0.1);
+      border-radius: 16px;
+      background: #fff;
+      position: relative;
+      overflow: hidden; /* 隐藏粒子溢出 */
+    }
+
+    /* 粒子背景：底层流动粒子 */
+    #particles-js {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1; /* 确保在内容下层 */
+      opacity: 0.3; /* 粒子透明度，可调节 */
+    }
+
+    /* 信息提示框 */
+    .info-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #ebf8ff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      animation: fadeIn 0.5s ease forwards;
+      opacity: 0;
+    }
+    .info-box i { color: #3182ce; }
+    @keyframes fadeIn {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+
+    /* 标题组：入场动画标记 */
+    h1 {
+      text-align: center;
+      margin-bottom: 2rem;
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    h1.gsap-ready { opacity: 1; transform: translateY(0); }
+
+    /* 聊天容器 */
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 500px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+      background: #f8fafc;
+    }
+
+    /* 聊天消息区域 */
+    .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    /* 消息气泡 */
+    .message {
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      line-height: 1.5;
+      position: relative;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .user-message {
+      background: linear-gradient(45deg, #4CAF50, #8BC34A);
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 5px;
+    }
+
+    .ai-message {
+      background: #edf2f7;
+      color: #2d3748;
+      align-self: flex-start;
+      border-bottom-left-radius: 5px;
+    }
+
+    .message-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .user-message .message-header {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .ai-message .message-header {
+      color: #4a5568;
+    }
+
+    .message-content {
+      word-wrap: break-word;
+    }
+
+    /* 输入区域 */
+    .input-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .form-control {
+      flex: 1;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: #4CAF50;
+      box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+    }
+
+    /* 按钮核心动效：悬浮+波纹 */
+    .btn-primary {
+      background: linear-gradient(45deg, #4CAF50, #8BC34A);
+      border: none;
+      box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      color: #fff;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+      background: linear-gradient(45deg, #66bb6a, #a5d6a7);
+    }
+    .btn-primary:active {
+      transform: translateY(0);
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    }
+    .btn-primary::after {
+      content: "";
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 6px; height: 6px;
+      background: rgba(255,255,255,0.6);
+      border-radius: 50%;
+      transform: scale(1) translate(-50%, -50%);
+      opacity: 0;
+    }
+    .btn-primary:focus:not(:active)::after {
+      animation: ripple 1.2s ease-out;
+    }
+    @keyframes ripple {
+      0% { transform: scale(0); opacity: 0.6; }
+      20% { transform: scale(20); opacity: 0.3; }
+      100% { transform: scale(40); opacity: 0; }
+    }
+
+    /* 页脚：入场动画标记 */
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .footer.gsap-ready { opacity: 1; transform: translateY(0); }
+
+    /* 返回按钮 */
+    .back-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: #4CAF50;
+      font-size: 1.5rem;
+      text-decoration: none;
+      transition: transform 0.3s;
+    }
+    .back-btn:hover {
+      transform: translateX(-5px);
+    }
+
+    /* 打字指示器 */
+    .typing-indicator {
+      display: none;
+      background: #edf2f7;
+      padding: 12px 16px;
+      border-radius: 18px;
+      align-self: flex-start;
+      margin-bottom: 10px;
+      color: #4a5568;
+    }
+    .typing-indicator span {
+      height: 8px;
+      width: 8px;
+      background-color: #4CAF50;
+      border-radius: 50%;
+      display: inline-block;
+      margin: 0 2px;
+      animation: typing 1.4s infinite both;
+    }
+    .typing-indicator span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    .typing-indicator span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+    @keyframes typing {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-5px); }
+    }
+
+    /* 快捷提问按钮 */
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .suggestion-btn {
+      background: #e2f4e9;
+      border: none;
+      border-radius: 20px;
+      padding: 8px 15px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #2d3748;
+    }
+    .suggestion-btn:hover {
+      background: #c8e6c9;
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 粒子背景容器 -->
+    <div id="particles-js"></div>
+
+    <!-- 返回按钮 -->
+    <a href="/" class="back-btn">
+      <i class="fas fa-arrow-left"></i>
+    </a>
+
+    <!-- 标题（GSAP 动画标记） -->
+    <h1 class="text-3xl font-bold text-center text-green-700">CarpAgent AI</h1>
+
+    <!-- 信息提示框 -->
+    <div class="info-box">
+      <i class="fas fa-robot"></i>
+      <span>DeepSeek AI 材料科学专家 - 随时解答您的材料问题</span>
+    </div>
+
+    <!-- 聊天容器 -->
+    <div class="chat-container">
+      <div class="chat-messages" id="chat-messages">
+        <div class="message ai-message">
+          <div class="message-header">
+            <i class="fas fa-robot mr-2"></i> DeepSeek AI
+          </div>
+          <div class="message-content">
+            您好！我是CarpAgent AI材料科学助手，可以回答关于材料性质、结构、合成方法等方面的问题。
+            您也可以上传材料数据文件，我会帮您分析。请问有什么可以帮您的？
+          </div>
+        </div>
+
+        <div class="typing-indicator" id="typing-indicator">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+
+      <!-- 输入区域 -->
+      <div class="p-4 border-t border-gray-200">
+        <div class="input-group">
+          <input type="text" id="user-input" class="form-control" placeholder="输入关于材料科学的问题..." autocomplete="off">
+          <button id="send-btn" class="btn-primary">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+
+        <div class="suggestions">
+          <button class="suggestion-btn" data-msg="钛合金有哪些常见类型？">钛合金类型</button>
+          <button class="suggestion-btn" data-msg="如何计算材料的形成能？">形成能计算</button>
+          <button class="suggestion-btn" data-msg="半导体材料的带隙范围是多少？">带隙范围</button>
+          <button class="suggestion-btn" data-msg="高温超导材料的研究进展">超导材料</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 页脚（GSAP 动画标记） -->
+    <div class="footer text-center text-gray-500 text-sm">
+      欢迎交流：2562662483@qq.com | © 2026 CarpAgent AI 智能平台
+    </div>
+  </div>
+
+  <script>
+    // ———— 1. 初始化粒子背景 ————
+    particlesJS('particles-js', {
+      particles: {
+        number: { value: 80, density: { enable: true, value_area: 800 } },
+        color: { value: "#4CAF50" }, // 粒子颜色（与主题呼应）
+        shape: { type: "circle" },
+        opacity: { value: 0.6, random: true },
+        size: { value: 3, random: true },
+        line_linked: { enable: false },
+        move: { enable: true, speed: 2, direction: "none", random: true }
+      },
+      interactivity: {
+        detect_on: "canvas",
+        events: { onclick: { enable: false } }
+      },
+      retina_detect: true
+    });
+
+    // ———— 2. GSAP 分步入场动画 ————
+    window.addEventListener('load', () => {
+      // 标题动画
+      gsap.to('h1', {
+        opacity: 1,
+        y: 0,
+        duration: 0.6,
+        ease: 'power2.out',
+        onComplete: () => document.querySelector('h1').classList.add('gsap-ready')
+      });
+
+      // 聊天容器动画（延迟0.2s）
+      gsap.to('.chat-container', {
+        opacity: 1,
+        y: 0,
+        duration: 0.6,
+        ease: 'power2.out',
+        delay: 0.2
+      });
+
+      // 页脚动画（延迟0.4s）
+      gsap.to('.footer', {
+        opacity: 1,
+        y: 0,
+        duration: 0.6,
+        ease: 'power2.out',
+        delay: 0.4,
+        onComplete: () => document.querySelector('.footer').classList.add('gsap-ready')
+      });
+    });
+
+    // ———— 3. 聊天功能逻辑 ————
+    document.addEventListener('DOMContentLoaded', function() {
+      const chatMessages = document.getElementById('chat-messages');
+      const userInput = document.getElementById('user-input');
+      const sendBtn = document.getElementById('send-btn');
+      const typingIndicator = document.getElementById('typing-indicator');
+      const suggestionBtns = document.querySelectorAll('.suggestion-btn');
+
+      // 发送消息函数（已修改响应处理逻辑）
+      function sendMessage() {
+        const message = userInput.value.trim();
+        if (!message) return;
+
+        // 添加用户消息
+        addMessage(message, 'user');
+        userInput.value = '';
+
+        // 显示正在输入指示器
+        typingIndicator.style.display = 'block';
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // 发送到后端API（已修改响应处理逻辑）
+        fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query: message }),
+        })
+        .then(response => response.json())
+        .then(data => {
+          typingIndicator.style.display = 'none';
+
+          // ✅ 修改后的响应处理逻辑：提取DeepSeek回复内容
+          if (data.error) {
+            // 处理后端返回的错误
+            addMessage(`错误: ${data.error}`, 'ai');
+          } else if (data.choices && data.choices.length > 0 &&
+                     data.choices[0].message && data.choices[0].message.content) {
+            // 提取DeepSeek回复的核心内容
+            const aiContent = data.choices[0].message.content;
+            addMessage(aiContent, 'ai');
+          } else {
+            // 无法解析响应时的回退处理
+            addMessage('未获取到有效回复', 'ai');
+          }
+        })
+        .catch(error => {
+          typingIndicator.style.display = 'none';
+          addMessage('请求失败，请稍后再试', 'ai');
+          console.error('Error:', error);
+        });
+      }
+
+      // 添加消息到聊天窗口（保持不变）
+      function addMessage(content, sender) {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message');
+        messageDiv.classList.add(sender === 'user' ? 'user-message' : 'ai-message');
+
+        const header = document.createElement('div');
+        header.classList.add('message-header');
+
+        const icon = document.createElement('i');
+        icon.classList.add('fas');
+        icon.classList.add(sender === 'user' ? 'fa-user' : 'fa-robot');
+        icon.classList.add('mr-2');
+
+        const senderName = document.createElement('span');
+        senderName.textContent = sender === 'user' ? '您' : 'DeepSeek AI';
+
+        header.appendChild(icon);
+        header.appendChild(senderName);
+
+        const contentDiv = document.createElement('div');
+        contentDiv.classList.add('message-content');
+        contentDiv.innerHTML = content.replace(/\n/g, '<br>');
+
+        messageDiv.appendChild(header);
+        messageDiv.appendChild(contentDiv);
+
+        chatMessages.insertBefore(messageDiv, typingIndicator);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+      // 事件监听（保持不变）
+      sendBtn.addEventListener('click', sendMessage);
+
+      userInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          sendMessage();
+        }
+      });
+
+      // 快捷提问按钮（保持不变）
+      suggestionBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+          userInput.value = this.getAttribute('data-msg');
+          sendMessage();
+        });
+      });
+    });
+  </script>
+</body>
+</html>

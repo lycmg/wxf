@@ -1,0 +1,40 @@
+name: Deploy Flask AI Assistant
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14.0'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Create .env file
+        run: |
+          echo "DEEPSEEK_API_KEY=${{ secrets.DEEPSEEK_API_KEY }}" > .env
+          echo "BACKEND_API_KEY=${{ secrets.BACKEND_API_KEY }}" >> .env
+
+      - name: Run Flask app (app4.py)
+        run: |
+          nohup python app4.py > app.log 2>&1 &
+          sleep 15
+          if pgrep -f "python app4.py" > /dev/null; then
+            echo "✅ Flask 服务启动成功"
+          else
+            echo "❌ 启动失败"
+            cat app.log
+            exit 1
+          fi>

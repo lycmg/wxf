@@ -1,0 +1,7 @@
+Flask==3.0.0
+flask-cors==4.0.0
+python-dotenv==1.0.0
+requests==2.31.0
+mp-api==0.36.1
+pymatgen==2024.3.1
+pandas==2.2.1
